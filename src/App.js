@@ -76,104 +76,125 @@ function App() {
   };
 
   const renderDiff = () => {
-    if (!diffResult) {
-      return null;
-    }
+  if (!diffResult) {
+    return null;
+  }
 
-    if (diffResult.error) {
-      return (
-        <div className="bg-red-200 text-red-800 p-4 rounded-lg mt-4 font-mono whitespace-pre-wrap">
-          Error: {diffResult.error}
-        </div>
-      );
-    }
+  if (diffResult.error) {
+    return (
+      <div className="bg-red-200 text-red-800 p-4 rounded-lg mt-4 font-mono whitespace-pre-wrap">
+        Error: {diffResult.error}
+      </div>
+    );
+  }
 
-    if (diffType === "text") {
-      return (
-        <div className="bg-gray-800 p-4 rounded-lg mt-4 font-mono text-white max-h-96 overflow-auto">
-          {diffResult.map((item, index) => {
-            let colorClass = "";
-            if (item.type === "added") {
-              colorClass = "text-green-400";
-            } else if (item.type === "removed") {
-              colorClass = "text-red-400";
-            }
-            return (
-              <div key={index} className={colorClass}>
-                {item.type === "added"
-                  ? "+"
-                  : item.type === "removed"
-                  ? "-"
-                  : " "}{" "}
-                {item.line}
-              </div>
-            );
-          })}
+  if (diffType === "text") {
+    return (
+      <div className="grid grid-cols-2 gap-4 mt-4 max-h-96 overflow-auto font-mono">
+        {/* Left Side - Input 1 */}
+        <div className="bg-gray-800 p-4 rounded-lg text-white">
+          <h3 className="font-bold mb-2 text-yellow-400">Input 1</h3>
+          {diffResult.map((item, index) => (
+            <div
+              key={index}
+              className={
+                item.type === "removed"
+                  ? "bg-red-600/40 text-red-300 px-2"
+                  : item.type === "unchanged"
+                  ? "text-gray-300 px-2"
+                  : "px-2"
+              }
+            >
+              {item.type !== "added" ? item.line : ""}
+            </div>
+          ))}
         </div>
-      );
-    } else if (diffType === "json" || diffType === "headers") {
-      const renderObject = (obj, indent = 0) => {
-        return Object.entries(obj).map(([key, value], index) => {
-          const padding = "  ".repeat(indent);
-          const colorClass =
+
+        {/* Right Side - Input 2 */}
+        <div className="bg-gray-800 p-4 rounded-lg text-white">
+          <h3 className="font-bold mb-2 text-yellow-400">Input 2</h3>
+          {diffResult.map((item, index) => (
+            <div
+              key={index}
+              className={
+                item.type === "added"
+                  ? "bg-green-600/40 text-green-300 px-2"
+                  : item.type === "unchanged"
+                  ? "text-gray-300 px-2"
+                  : "px-2"
+              }
+            >
+              {item.type !== "removed" ? item.line : ""}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // keep JSON / headers as-is
+  else if (diffType === "json" || diffType === "headers") {
+    const renderObject = (obj, indent = 0) => {
+      return Object.entries(obj).map(([key, value]) => {
+        const padding = "  ".repeat(indent);
+        const colorClass =
+          value.type === "added"
+            ? "text-green-400"
+            : value.type === "removed"
+            ? "text-red-400"
+            : value.type === "changed"
+            ? "text-yellow-400"
+            : "";
+
+        if (value.type === "changed" && value.nested) {
+          return (
+            <React.Fragment key={key}>
+              <div className={`${colorClass}`}>{padding}"{key}": &#123;</div>
+              {renderObject(value.nested, indent + 1)}
+              <div className={`${colorClass}`}>{padding}&#125;</div>
+            </React.Fragment>
+          );
+        } else if (value.type === "changed") {
+          return (
+            <div key={key} className={colorClass}>
+              <span className="text-red-400">
+                {padding}- "{key}": {JSON.stringify(value.from)}
+              </span>
+              <br />
+              <span className="text-green-400">
+                {padding}+ "{key}": {JSON.stringify(value.to)}
+              </span>
+            </div>
+          );
+        } else {
+          const prefix =
             value.type === "added"
-              ? "text-green-400"
+              ? "+"
               : value.type === "removed"
-              ? "text-red-400"
-              : value.type === "changed"
-              ? "text-yellow-400"
-              : "";
+              ? "-"
+              : " ";
+          return (
+            <div key={key} className={`${colorClass}`}>
+              {padding}
+              {prefix} "{key}": {JSON.stringify(value.value)}
+            </div>
+          );
+        }
+      });
+    };
 
-          if (value.type === "changed" && value.nested) {
-            return (
-              <React.Fragment key={key}>
-                <div className={`${colorClass}`}>
-                  {padding}"{key}": &#123;
-                </div>
-                {renderObject(value.nested, indent + 1)}
-                <div className={`${colorClass}`}>{padding}&#125;</div>
-              </React.Fragment>
-            );
-          } else if (value.type === "changed") {
-            return (
-              <div key={key} className={colorClass}>
-                <span className="text-red-400">
-                  {padding}- "{key}": {JSON.stringify(value.from)}
-                </span>
-                <br />
-                <span className="text-green-400">
-                  {padding}+ "{key}": {JSON.stringify(value.to)}
-                </span>
-              </div>
-            );
-          } else {
-            const prefix =
-              value.type === "added"
-                ? "+"
-                : value.type === "removed"
-                ? "-"
-                : " ";
-            return (
-              <div key={key} className={`${colorClass}`}>
-                {padding}
-                {prefix} "{key}": {JSON.stringify(value.value)}
-              </div>
-            );
-          }
-        });
-      };
+    return (
+      <div className="bg-gray-800 p-4 rounded-lg mt-4 font-mono text-white max-h-96 overflow-auto">
+        {Object.keys(diffResult).length > 0 ? (
+          renderObject(diffResult)
+        ) : (
+          <div className="text-white text-center">No differences found.</div>
+        )}
+      </div>
+    );
+  }
+};
 
-      return (
-        <div className="bg-gray-800 p-4 rounded-lg mt-4 font-mono text-white max-h-96 overflow-auto">
-          {Object.keys(diffResult).length > 0 ? (
-            renderObject(diffResult)
-          ) : (
-            <div className="text-white text-center">No differences found.</div>
-          )}
-        </div>
-      );
-    }
-  };
 
   return (
     <div
