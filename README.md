@@ -1,4 +1,4 @@
-# 📝 Difference Checker
+# 📝 Data Diff
 
 A simple and interactive **Difference Checker** built with React.  
 This app allows you to **compare Text, JSON, or HTTP Headers** side by side and highlights the differences clearly.
